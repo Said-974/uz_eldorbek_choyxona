@@ -36,20 +36,35 @@ jobs:
           rm -rf android
           flutter create . --platforms=android --org uz.eldorbek --project-name uz_eldorbek_choyxona
 
-      - name: 🔧 Android SDK 35 va minSdk 21 sozlash
+      - name: 🔧 Plaginlar va Android SDK 35 ni to'liq sozlash
         run: |
           python3 -c "
-          import os
-          for root, _, files in os.walk('android'):
-              for file in files:
-                  if file.endswith('.gradle') or file.endswith('.gradle.kts'):
-                      path = os.path.join(root, file)
-                      with open(path, 'r', encoding='utf-8') as f:
-                          c = f.read()
-                      c = c.replace('flutter.compileSdkVersion', '35')
-                      c = c.replace('flutter.minSdkVersion', '21')
-                      with open(path, 'w', encoding='utf-8') as f:
-                          f.write(c)
+          # app/build.gradle ni sozlash
+          app_gradle = 'android/app/build.gradle'
+          with open(app_gradle, 'r') as f:
+              text = f.read()
+          text = text.replace('minSdk = flutter.minSdkVersion', 'minSdk = 21')
+          text = text.replace('compileSdk = flutter.compileSdkVersion', 'compileSdk = 35')
+          text = text.replace('targetSdk = flutter.targetSdkVersion', 'targetSdk = 34')
+          with open(app_gradle, 'w') as f:
+              f.write(text)
+
+          # root build.gradle ga barcha plaginlar uchun compileSdk 35 qo'shish
+          root_gradle = 'android/build.gradle'
+          subprojects_config = '''
+          subprojects {
+              afterEvaluate { project ->
+                  if (project.hasProperty('android')) {
+                      project.android {
+                          compileSdkVersion 35
+                          buildToolsVersion '35.0.0'
+                      }
+                  }
+              }
+          }
+          '''
+          with open(root_gradle, 'a') as f:
+              f.write(subprojects_config)
           "
 
       - name: 📦 Paketlarni yuklash
