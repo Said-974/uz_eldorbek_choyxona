@@ -1,0 +1,42 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Kodni yuklab olish
+        uses: actions/checkout@v4
+
+      - name: ☕ Java 17 o'rnatish
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: 🐦 Flutter SDK o'rnatish
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.0'
+          channel: 'stable'
+          cache: true
+
+      - name: 📦 Paketlarni yuklash
+        run: flutter pub get
+
+      - name: ⚙️ Drift va kod generatorini ishga tushirish
+        run: dart run build_runner build --delete-conflicting-outputs
+
+      - name: 🔨 Release APK yig'ish
+        run: flutter build apk --release --split-per-abi
+
+      - name: 📤 APK ni yuklab olish uchun saqlash
+        uses: actions/upload-artifact@v4
+        with:
+          name: eldorbek-choyxona-apk
+          path: build/app/outputs/flutter-apk/*.apk
