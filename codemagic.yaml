@@ -21,28 +21,56 @@ workflows:
         script: |
           flutter pub get
 
-      - name: Eski plaginlar uchun Namespace ni avtomatik to'g'rilash
+      - name: Plaginlar va Gradle xatolarini to'liq to'g'rilash
         script: |
           python3 -c "
           import os, re
 
+          # 1. Asosiy app/build.gradle ni sozlash
+          app_gradle = 'android/app/build.gradle'
+          if os.path.exists(app_gradle):
+              with open(app_gradle, 'r', encoding='utf-8') as f:
+                  c = f.read()
+              c = c.replace('minSdk = flutter.minSdkVersion', 'minSdk = 21')
+              c = c.replace('compileSdk = flutter.compileSdkVersion', 'compileSdk = 35')
+              c = c.replace('targetSdk = flutter.targetSdkVersion', 'targetSdk = 34')
+              with open(app_gradle, 'w', encoding='utf-8') as f:
+                  f.write(c)
+
+          # 2. Pub cache ichidagi barcha plaginlarning build.gradle fayllarini to'g'rilash
           cache_dir = os.path.expanduser('~/.pub-cache/hosted/pub.dev')
           if os.path.exists(cache_dir):
-              for pkg in os.listdir(cache_dir):
-                  bg = os.path.join(cache_dir, pkg, 'android', 'build.gradle')
-                  mf = os.path.join(cache_dir, pkg, 'android', 'src', 'main', 'AndroidManifest.xml')
-                  if os.path.exists(bg) and os.path.exists(mf):
-                      with open(bg, 'r', encoding='utf-8') as f:
-                          bg_code = f.read()
-                      if 'namespace' not in bg_code:
-                          with open(mf, 'r', encoding='utf-8') as f:
-                              mf_code = f.read()
-                          match = re.search(r'package=\"([^\"]+)\"', mf_code)
-                          if match:
-                              ns = match.group(1)
-                              bg_code = bg_code.replace('android {', f'android {{\n    namespace \"{ns}\"', 1)
-                              with open(bg, 'w', encoding='utf-8') as f:
-                                  f.write(bg_code)
+              for root, dirs, files in os.walk(cache_dir):
+                  for file in files:
+                      if file == 'build.gradle':
+                          gpath = os.path.join(root, file)
+                          with open(gpath, 'r', encoding='utf-8', errors='ignore') as f:
+                              content = f.read()
+
+                          # flutter.compileSdkVersion va boshqalarni to'g'ridan-to'g'ri sonlarga almashtirish
+                          content = content.replace('flutter.compileSdkVersion', '35')
+                          content = content.replace('flutter.minSdkVersion', '21')
+                          content = content.replace('flutter.targetSdkVersion', '34')
+                          content = content.replace('compileSdk flutter.compileSdkVersion', 'compileSdk 35')
+                          content = content.replace('minSdk flutter.minSdkVersion', 'minSdk 21')
+                          content = content.replace('targetSdk flutter.targetSdkVersion', 'targetSdk 34')
+
+                          # namespace va compileSdkVersion qo'shish
+                          if 'android {' in content and 'namespace' not in content:
+                              mpath = os.path.join(root, 'src', 'main', 'AndroidManifest.xml')
+                              ns = 'com.example.plugin'
+                              if os.path.exists(mpath):
+                                  with open(mpath, 'r', encoding='utf-8', errors='ignore') as mf:
+                                      mcontent = mf.read()
+                                  match = re.search(r'package=\"([^\"]+)\"', mcontent)
+                                  if match:
+                                      ns = match.group(1)
+                              content = content.replace('android {', f'android {{\n    namespace \"{ns}\"\n    compileSdkVersion 35', 1)
+                          elif 'android {' in content and 'compileSdkVersion' not in content and 'compileSdk' not in content:
+                              content = content.replace('android {', 'android {\n    compileSdkVersion 35', 1)
+
+                          with open(gpath, 'w', encoding='utf-8') as f:
+                              f.write(content)
           "
 
       - name: Drift kod generatorini yurgizish
@@ -51,7 +79,7 @@ workflows:
 
       - name: Release APK yig'ish
         script: |
-          flutter build apk --release
+          flutter build apk --release --no-tree-shake-icons
     artifacts:
       - build/app/outputs/flutter-apk/*.apk
     publishing:
