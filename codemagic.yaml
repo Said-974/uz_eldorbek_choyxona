@@ -1,0 +1,31 @@
+workflows:
+  android-release:
+    name: Android Release Build
+    instance_type: mac_mini_m2
+    max_build_duration: 30
+    environment:
+      flutter: stable
+      java: 17
+    scripts:
+      - name: Environment sozlash
+        script: |
+          echo "SUPABASE_URL=https://dummy.supabase.co" > .env
+          echo "SUPABASE_ANON_KEY=dummy_key" >> .env
+      - name: Android platformani yaratish
+        script: |
+          flutter create . --platforms=android --org uz.eldorbek --project-name uz_eldorbek_choyxona
+      - name: Paketlarni olish
+        script: |
+          flutter pub get
+      - name: Drift kod generatorini yurgizish
+        script: |
+          dart run build_runner build --delete-conflicting-outputs
+      - name: Release APK yig'ish
+        script: |
+          flutter build apk --release
+    artifacts:
+      - build/app/outputs/flutter-apk/*.apk
+    publishing:
+      email:
+        recipients:
+          - makhmudov9911@gmail.com
