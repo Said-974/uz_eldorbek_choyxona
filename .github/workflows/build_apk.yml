@@ -22,7 +22,7 @@ jobs:
       - name: 🐦 Flutter SDK o'rnatish
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.22.2'
+          flutter-version: '3.24.0'
           channel: 'stable'
           cache: true
 
@@ -30,6 +30,18 @@ jobs:
         run: |
           rm -rf android
           flutter create . --platforms=android --org uz.eldorbek --project-name uz_eldorbek_choyxona
+
+      - name: 📄 .env faylini yaratish
+        run: |
+          echo "SUPABASE_URL=https://dummy.supabase.co" > .env
+          echo "SUPABASE_ANON_KEY=dummy_key" >> .env
+
+      - name: 🔧 Android SDK 35 sozlamasini kiritish
+        run: |
+          sed -i 's/compileSdkVersion flutter.compileSdkVersion/compileSdkVersion 35/g' android/app/build.gradle || true
+          sed -i 's/compileSdk = [0-9]*/compileSdk = 35/g' android/app/build.gradle || true
+          sed -i 's/minSdkVersion flutter.minSdkVersion/minSdkVersion 21/g' android/app/build.gradle || true
+          sed -i 's/minSdk = [0-9]*/minSdk = 21/g' android/app/build.gradle || true
 
       - name: 📦 Paketlarni yuklash
         run: flutter pub get
