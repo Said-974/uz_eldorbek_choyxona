@@ -32,7 +32,7 @@ dependencies:
   image: ^4.1.7
 
   # UI va Yordamchilar
-  intl: ^0.20.3
+  intl: any
   uuid: ^4.4.0
   flutter_dotenv: ^5.1.0
   shared_preferences: ^2.2.3
