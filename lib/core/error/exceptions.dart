@@ -5,9 +5,9 @@ class ServerException implements Exception {
   String toString() => message;
 }
 
-class AuthException implements Exception {
+class AppAuthException implements Exception {
   final String message;
-  AuthException(this.message);
+  AppAuthException(this.message);
   @override
   String toString() => message;
 }
