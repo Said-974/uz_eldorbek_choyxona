@@ -28,10 +28,10 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       if (data['success'] == true && data['user'] != null) {
         return UserModel.fromJson(data['user'] as Map<String, dynamic>);
       } else {
-        throw AuthException(data['message'] ?? 'PIN-kod noto‘g‘ri!');
+        throw AppAuthException(data['message'] ?? 'PIN-kod noto‘g‘ri!');
       }
     } catch (e) {
-      if (e is AuthException) rethrow;
+      if (e is AppAuthException) rethrow;
       throw ServerException('Server bilan bog‘lanishda xatolik yuz berdi.');
     }
   }
