@@ -4,22 +4,51 @@ workflows:
     instance_type: mac_mini_m2
     max_build_duration: 30
     environment:
-      flutter: stable
+      flutter: 3.24.0
       java: 17
     scripts:
       - name: Environment sozlash
         script: |
           echo "SUPABASE_URL=https://dummy.supabase.co" > .env
           echo "SUPABASE_ANON_KEY=dummy_key" >> .env
+
       - name: Android platformani yaratish
         script: |
+          rm -rf android
           flutter create . --platforms=android --org uz.eldorbek --project-name uz_eldorbek_choyxona
+
       - name: Paketlarni olish
         script: |
           flutter pub get
+
+      - name: Eski plaginlar uchun Namespace ni avtomatik to'g'rilash
+        script: |
+          python3 -c "
+          import os, re
+
+          cache_dir = os.path.expanduser('~/.pub-cache/hosted/pub.dev')
+          if os.path.exists(cache_dir):
+              for pkg in os.listdir(cache_dir):
+                  bg = os.path.join(cache_dir, pkg, 'android', 'build.gradle')
+                  mf = os.path.join(cache_dir, pkg, 'android', 'src', 'main', 'AndroidManifest.xml')
+                  if os.path.exists(bg) and os.path.exists(mf):
+                      with open(bg, 'r', encoding='utf-8') as f:
+                          bg_code = f.read()
+                      if 'namespace' not in bg_code:
+                          with open(mf, 'r', encoding='utf-8') as f:
+                              mf_code = f.read()
+                          match = re.search(r'package=\"([^\"]+)\"', mf_code)
+                          if match:
+                              ns = match.group(1)
+                              bg_code = bg_code.replace('android {', f'android {{\n    namespace \"{ns}\"', 1)
+                              with open(bg, 'w', encoding='utf-8') as f:
+                                  f.write(bg_code)
+          "
+
       - name: Drift kod generatorini yurgizish
         script: |
           dart run build_runner build --delete-conflicting-outputs
+
       - name: Release APK yig'ish
         script: |
           flutter build apk --release
