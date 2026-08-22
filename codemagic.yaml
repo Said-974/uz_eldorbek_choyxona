@@ -15,7 +15,7 @@ workflows:
       - name: Android platformani yaratish
         script: |
           rm -rf android
-          flutter create . --platforms=android --org uz.eldorbek --project-name uz_eldorbek_choyxona
+          flutter create . --platforms=android --org uz.eldorbek --project-name uz_eldorbek_choyxona --no-pub
 
       - name: Paketlarni olish
         script: |
