@@ -1,17 +1,19 @@
+import 'dart:io';
 import 'package:drift/drift.dart';
-import 'connection/native.dart';
+import 'package:drift/native.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart' as p;
 
 part 'app_database.g.dart';
 
-class LocalRooms extends Table {
+// Jadvallar (Drift DSL)
+class LocalRestaurants extends Table {
   TextColumn get id => text()();
-  TextColumn get restaurantId => text()();
-  TextColumn get name => text().withLength(min: 1, max: 50)();
-  IntColumn get number => integer()();
-  TextColumn get status => text().withDefault(const Constant('AVAILABLE'))();
-  IntColumn get sortOrder => integer().withDefault(const Constant(0))();
+  TextColumn get name => text()();
+  TextColumn get address => text().nullable()();
+  TextColumn get phone => text().nullable()();
   BoolColumn get isActive => boolean().withDefault(const Constant(true))();
-  DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
+  DateTimeColumn get updatedAt => dateTime().nullable()();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -19,10 +21,11 @@ class LocalRooms extends Table {
 
 class LocalCategories extends Table {
   TextColumn get id => text()();
-  TextColumn get companyId => text()();
-  TextColumn get name => text().withLength(min: 1, max: 100)();
+  TextColumn get restaurantId => text()();
+  TextColumn get name => text()();
   IntColumn get sortOrder => integer().withDefault(const Constant(0))();
   BoolColumn get isActive => boolean().withDefault(const Constant(true))();
+  DateTimeColumn get updatedAt => dateTime().nullable()();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -31,10 +34,24 @@ class LocalCategories extends Table {
 class LocalProducts extends Table {
   TextColumn get id => text()();
   TextColumn get categoryId => text()();
-  TextColumn get name => text().withLength(min: 1, max: 150)();
-  IntColumn get price => integer()();
-  TextColumn get unit => text().withDefault(const Constant('dona'))();
-  BoolColumn get isActive => boolean().withDefault(const Constant(true))();
+  TextColumn get restaurantId => text()();
+  TextColumn get name => text()();
+  RealColumn get price => real()();
+  TextColumn get printDestination => text().withDefault(const Constant('KITCHEN'))();
+  BoolColumn get isAvailable => boolean().withDefault(const Constant(true))();
+  DateTimeColumn get updatedAt => dateTime().nullable()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+class LocalDiningTables extends Table {
+  TextColumn get id => text()();
+  TextColumn get restaurantId => text()();
+  TextColumn get tableNumber => text()();
+  TextColumn get status => text().withDefault(const Constant('AVAILABLE'))();
+  TextColumn get currentOrderId => text().nullable()();
+  DateTimeColumn get updatedAt => dateTime().nullable()();
 
   @override
   Set<Column> get primaryKey => {id};
@@ -43,12 +60,11 @@ class LocalProducts extends Table {
 class LocalOrders extends Table {
   TextColumn get id => text()();
   TextColumn get restaurantId => text()();
-  TextColumn get roomId => text()();
+  TextColumn get tableId => text()();
   TextColumn get waiterId => text()();
   TextColumn get status => text().withDefault(const Constant('OPEN'))();
-  IntColumn get totalAmount => integer().withDefault(const Constant(0))();
-  TextColumn get idempotencyKey => text().nullable()();
-  DateTimeColumn get openedAt => dateTime().withDefault(currentDateAndTime)();
+  RealColumn get totalAmount => real().withDefault(const Constant(0.0))();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get closedAt => dateTime().nullable()();
   BoolColumn get isSynced => boolean().withDefault(const Constant(false))();
 
@@ -58,13 +74,12 @@ class LocalOrders extends Table {
 
 class LocalOrderItems extends Table {
   TextColumn get id => text()();
-  TextColumn get orderId => text().references(LocalOrders, #id)();
+  TextColumn get orderId => text()();
   TextColumn get productId => text()();
-  RealColumn get quantity => real()();
-  IntColumn get unitPriceAtSale => integer()();
-  IntColumn get totalPrice => integer()();
+  IntColumn get quantity => integer().withDefault(const Constant(1))();
+  RealColumn get unitPrice => real()();
   TextColumn get status => text().withDefault(const Constant('PENDING'))();
-  TextColumn get notes => text().nullable()();
+  TextColumn get comment => text().nullable()();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   BoolColumn get isSynced => boolean().withDefault(const Constant(false))();
 
@@ -74,28 +89,36 @@ class LocalOrderItems extends Table {
 
 class LocalSyncQueue extends Table {
   TextColumn get id => text()();
-  TextColumn get tableName => text()();
-  TextColumn get operation => text()();
+  TextColumn get targetTable => text()(); // tableName o'rniga targetTable qilindi
+  TextColumn get recordId => text()();
+  TextColumn get operation => text()(); // 'INSERT', 'UPDATE', 'DELETE'
   TextColumn get payload => text()();
-  TextColumn get idempotencyKey => text()();
-  TextColumn get status => text().withDefault(const Constant('PENDING'))();
-  IntColumn get retryCount => integer().withDefault(const Constant(0))();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+  BoolColumn get isSynced => boolean().withDefault(const Constant(false))();
 
   @override
   Set<Column> get primaryKey => {id};
 }
 
+LazyDatabase _openConnection() {
+  return LazyDatabase(() async {
+    final dbFolder = await getApplicationDocumentsDirectory();
+    final file = File(p.join(dbFolder.path, 'eldorbek_choyxona.sqlite'));
+    return NativeDatabase.createInBackground(file);
+  });
+}
+
 @DriftDatabase(tables: [
-  LocalRooms,
+  LocalRestaurants,
   LocalCategories,
   LocalProducts,
+  LocalDiningTables,
   LocalOrders,
   LocalOrderItems,
   LocalSyncQueue,
 ])
 class AppDatabase extends _$AppDatabase {
-  AppDatabase() : super(connectToDatabase());
+  AppDatabase() : super(_openConnection());
 
   @override
   int get schemaVersion => 1;
